@@ -1,9 +1,13 @@
 // libraries
 #include <GSM.h>
+#include <DHT.h>
+#include <LiquidCrystal.h>
+#include <Sleep_n0m1.h>
+
 
 // GSM settings
-#define PINNUMBER ""
-#define APN ""
+#define PINNUMBER "0000"
+#define APN "internet"
 #define USER ""
 #define PSW  ""
 
@@ -11,7 +15,15 @@
 #define URL ""
 #define PATH ""
 
-// initialize the library instance
+//DHT settings
+#define DHTPIN 9
+#define DHTTYPE DHT11   // DHT 11 
+
+#define SLEEPTIME 300000
+
+DHT dht(DHTPIN, DHTTYPE);
+Sleep sleep;
+LiquidCrystal lcd(12, 11, 8, 6, 5, 4);
 GSM gsmAccess;   // GSM access: include a 'true' parameter for debug enabled
 GPRS gprsAccess;  // GPRS access
 GSMClient client;  // Client service for TCP connection
@@ -25,48 +37,51 @@ char path[] = "/";
 // variable for save response obtained
 String response = "";
 
-const int analogInPin = A0;  // Analog input pin that the potentiometer is attached to
-const double degreePrVolt = 25/0.75;
-
 void setup()
 {
-  // initialize serial communications and wait for port to open:
-  Serial.begin(9600);
 }
 
-void loop()
-{
+void loop() {
+  digitalWrite(11, LOW);  
+  measureAndPost();
+  sleep.pwrDownMode();
+  sleep.sleepDelay(SLEEPTIME);
+  digitalWrite(11, HIGH);
+  delay(300); 
+}
 
+
+void measureAndPost () {
   // start GSM shield
   // if your SIM has PIN, pass it as a parameter of begin() in quotes
-  Serial.print("Connecting GSM network...");
+  printToScreen("Connecting GSM network...");
   if (gsmAccess.begin(PINNUMBER) != GSM_READY)
   {
-    Serial.println(errortext);
+    printToScreen(errortext);
     while (true);
   }
-  Serial.println(oktext);
+  printToScreen(oktext);
 
-  Serial.println("Attaching to GPRS with your APN...");
+  printToScreen("Attaching to GPRS with your APN...");
   
   delay(1000);
   
   if (gprsAccess.attachGPRS(APN, USER, PSW) != GPRS_READY)
   {
-    Serial.println(errortext);
+    printToScreen(errortext);
   }
   else {
     // connection and realize HTTP request
-    Serial.println("Connecting and sending POST");
+    printToScreen("Connecting and sending POST");
     int res_connect;
 
     res_connect = client.connect(URL, 80);
     String temp = readTemp();
-    Serial.println(temp);
+    printToScreen(temp);
     
     if (res_connect)
     { 
-      Serial.println("connected!");
+      printToScreen("connected!");
       client.print("POST ");
       client.print(PATH);
       client.println(" HTTP/1.1");
@@ -78,14 +93,14 @@ void loop()
       client.print(temp);
       client.println();      
 
-      Serial.println(oktext);
+      printToScreen(oktext);
     }
     else
     {
       // if you didn't get a connection to the server
-      Serial.println(errortext);
+      printToScreen(errortext);
     }
-    Serial.print("Receiving response...");
+    printToScreen("Receiving response...");
 
     boolean test = true;
     while (test)
@@ -102,8 +117,7 @@ void loop()
         response.toCharArray(responsechar, response.length() + 1);
         // if response includes a "200 OK" substring
         if (strstr(responsechar, "200 OK") != NULL) {
-          Serial.println(oktext);
-          Serial.println("TEST COMPLETE!");
+          printToScreen(oktext);
           test = false;
         }
       }
@@ -111,8 +125,7 @@ void loop()
       // if the server's disconnected, stop the client:
       if (!client.connected())
       {
-        Serial.println();
-        Serial.println("disconnecting.");
+        printToScreen("disconnecting.");
         client.stop();
         test = false;
       }
@@ -120,16 +133,18 @@ void loop()
   }
 }
 
+void printToScreen(String str) {
+  lcd.clear();
+  lcd.print(str);
+}
+
 String readTemp() {
-  double sensorValue = analogRead(analogInPin);
-  
-  double tempVoltage = sensorValue * 0.0049;
-  double tempCel = tempVoltage * degreePrVolt;
+  float t = dht.readTemperature();
 
   char tmp[20];
   String preTmp = "{\"temp\": \"";
   String postTemp = "\"}";
-  dtostrf(tempCel, 4, 3, tmp);
+  dtostrf(t, 4, 3, tmp);
   preTmp.concat(tmp);
   preTmp.concat(postTemp);
   
