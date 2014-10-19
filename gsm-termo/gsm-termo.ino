@@ -39,14 +39,13 @@ String response = "";
 
 void setup()
 {
+  printToScreen("init");
 }
 
 void loop() {
-  digitalWrite(11, LOW);  
   measureAndPost();
   sleep.pwrDownMode();
   sleep.sleepDelay(SLEEPTIME);
-  digitalWrite(11, HIGH);
   delay(300); 
 }
 
@@ -88,7 +87,8 @@ void measureAndPost () {
       client.println("Content-Type: application/json");
       client.print("Content-Length: ");
       client.println(temp.length());
-      client.println("Host: postcatcher.in");
+      client.print("Host: ");
+      client.println(URL);
       client.println();  
       client.print(temp);
       client.println();      
@@ -142,11 +142,11 @@ String readTemp() {
   float t = dht.readTemperature();
 
   char tmp[20];
-  String preTmp = "{\"temp\": \"";
-  String postTemp = "\"}";
+  String preTmp = "{\"temprature\": {\"temprature\": \"";
+  String postTemp = "\"}}";
   dtostrf(t, 4, 3, tmp);
   preTmp.concat(tmp);
   preTmp.concat(postTemp);
-  
+
   return preTmp;
 };
