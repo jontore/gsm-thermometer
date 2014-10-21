@@ -1,7 +1,7 @@
 // libraries
 #include <GSM.h>
 #include <DHT.h>
-#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
 #include <Sleep_n0m1.h>
 
 
@@ -23,7 +23,7 @@
 
 DHT dht(DHTPIN, DHTTYPE);
 Sleep sleep;
-LiquidCrystal lcd(12, 11, 8, 6, 5, 4);
+LiquidCrystal_I2C lcd(0x3F, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 GSM gsmAccess;   // GSM access: include a 'true' parameter for debug enabled
 GPRS gprsAccess;  // GPRS access
 GSMClient client;  // Client service for TCP connection
@@ -44,6 +44,8 @@ void setup()
 
 void loop() {
   measureAndPost();
+  lcd.print("C:");
+  lcd.print(dht.readTemperature());
   sleep.pwrDownMode();
   sleep.sleepDelay(SLEEPTIME);
   delay(300); 
