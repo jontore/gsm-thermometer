@@ -1,6 +1,8 @@
 // libraries
 #include <GSM.h>
 #include <DHT.h>
+#include <Wire.h> 
+
 #include <LiquidCrystal_I2C.h>
 #include <Sleep_n0m1.h>
 
@@ -39,15 +41,17 @@ String response = "";
 
 void setup()
 {
+  lcd.begin(20,4);
+  lcd.home();  
   printToScreen("init");
 }
 
 void loop() {
+  lcd.display();
   measureAndPost();
-  lcd.print("C:");
-  lcd.print(dht.readTemperature());
   sleep.pwrDownMode();
   sleep.sleepDelay(SLEEPTIME);
+  lcd.noDisplay();
   delay(300); 
 }
 
@@ -55,15 +59,12 @@ void loop() {
 void measureAndPost () {
   // start GSM shield
   // if your SIM has PIN, pass it as a parameter of begin() in quotes
-  printToScreen("Connecting GSM network...");
+  printToScreen("Connecting");
   if (gsmAccess.begin(PINNUMBER) != GSM_READY)
   {
     printToScreen(errortext);
     while (true);
   }
-  printToScreen(oktext);
-
-  printToScreen("Attaching to GPRS with your APN...");
   
   delay(1000);
   
@@ -73,12 +74,11 @@ void measureAndPost () {
   }
   else {
     // connection and realize HTTP request
-    printToScreen("Connecting and sending POST");
+    printToScreen("Updating server");
     int res_connect;
 
     res_connect = client.connect(URL, 80);
     String temp = readTemp();
-    printToScreen(temp);
     
     if (res_connect)
     { 
@@ -102,7 +102,7 @@ void measureAndPost () {
       // if you didn't get a connection to the server
       printToScreen(errortext);
     }
-    printToScreen("Receiving response...");
+    printToScreen("Waiting..");
 
     boolean test = true;
     while (test)
@@ -136,8 +136,15 @@ void measureAndPost () {
 }
 
 void printToScreen(String str) {
-  lcd.clear();
+  lcd.home();
   lcd.print(str);
+  printTemp();
+}
+
+void printTemp() {
+  lcd.setCursor(12, 4);
+  lcd.print("C:");
+  lcd.print(dht.readTemperature());
 }
 
 String readTemp() {
