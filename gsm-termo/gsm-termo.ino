@@ -51,6 +51,7 @@ void loop() {
   measureAndPost();
   sleep.pwrDownMode();
   sleep.sleepDelay(SLEEPTIME);
+  lcd.clear();
   lcd.noDisplay();
   delay(300); 
 }
@@ -150,12 +151,13 @@ void printTemp() {
 String readTemp() {
   float t = dht.readTemperature();
 
+  char output[100];
   char tmp[20];
-  String preTmp = "{\"temprature\": {\"temprature\": \"";
-  String postTemp = "\"}}";
+  char *preTmp = "{\"temperature\": {\"temperature\": \"";
+  char *postTmp = "\"}}";
   dtostrf(t, 4, 3, tmp);
-  preTmp.concat(tmp);
-  preTmp.concat(postTemp);
-
-  return preTmp;
+  strcpy(output, preTmp);
+  strcat(output, tmp);
+  strcat(output, postTmp);
+  return output;
 };
