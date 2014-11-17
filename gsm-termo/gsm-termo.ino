@@ -49,10 +49,10 @@ void setup()
 void loop() {
   lcd.display();
   measureAndPost();
-  sleep.pwrDownMode();
-  sleep.sleepDelay(SLEEPTIME);
   lcd.clear();
   lcd.noDisplay();
+  sleep.pwrDownMode();
+  sleep.sleepDelay(SLEEPTIME);
   delay(300); 
 }
 
@@ -103,36 +103,8 @@ void measureAndPost () {
       // if you didn't get a connection to the server
       printToScreen(errortext);
     }
-    printToScreen("Waiting..");
-
-    boolean test = true;
-    while (test)
-    {
-      // if there are incoming bytes available
-      // from the server, read and check them
-      if (client.available())
-      {
-        char c = client.read();
-        response += c;
-
-        // cast response obtained from string to char array
-        char responsechar[response.length() + 1];
-        response.toCharArray(responsechar, response.length() + 1);
-        // if response includes a "200 OK" substring
-        if (strstr(responsechar, "200 OK") != NULL) {
-          printToScreen(oktext);
-          test = false;
-        }
-      }
-
-      // if the server's disconnected, stop the client:
-      if (!client.connected())
-      {
-        printToScreen("disconnecting.");
-        client.stop();
-        test = false;
-      }
-    }
+    printToScreen("disconnecting.");
+    client.stop();
   }
 }
 
