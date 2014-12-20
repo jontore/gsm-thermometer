@@ -1,14 +1,16 @@
 // libraries
-#include <GSM.h>
+#include "SIM900.h"
+#include <SoftwareSerial.h>
+#include "inetGSM.h"
 #include <DHT.h>
-#include <Wire.h> 
+#include <Wire.h>
 
 #include <LiquidCrystal_I2C.h>
 #include <Sleep_n0m1.h>
 
 
 // GSM settings
-#define PINNUMBER "0000"
+#define PINNUMBER "AT+CPIN=0000"
 #define APN "internet"
 #define USER ""
 #define PSW  ""
@@ -18,7 +20,7 @@
 #define PATH ""
 
 //DHT settings
-#define DHTPIN 9
+#define DHTPIN 7
 #define DHTTYPE DHT11   // DHT 11 
 
 #define SLEEPTIME 300000
@@ -26,9 +28,8 @@
 DHT dht(DHTPIN, DHTTYPE);
 Sleep sleep;
 LiquidCrystal_I2C lcd(0x3F, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
-GSM gsmAccess;   // GSM access: include a 'true' parameter for debug enabled
-GPRS gprsAccess;  // GPRS access
-GSMClient client;  // Client service for TCP connection
+InetGSM inet;
+
 
 // messages for serial monitor response
 String oktext = "OK";
@@ -41,8 +42,8 @@ String response = "";
 
 void setup()
 {
-  lcd.begin(20,4);
-  lcd.home();  
+  lcd.begin(20, 4);
+  lcd.home();
   printToScreen("init");
 }
 
@@ -53,63 +54,87 @@ void loop() {
   lcd.noDisplay();
   sleep.pwrDownMode();
   sleep.sleepDelay(SLEEPTIME);
-  delay(300); 
+  delay(300);
 }
 
 
-void measureAndPost () {
-  // start GSM shield
-  // if your SIM has PIN, pass it as a parameter of begin() in quotes
+int measureAndPost () {
+  boolean started = false;
   printToScreen("Connecting");
-  if (gsmAccess.begin(PINNUMBER) != GSM_READY)
-  {
-    printToScreen(errortext);
-    while (true);
+  if (gsm.begin(2400)) {
+    gsm.SimpleWriteln(PINNUMBER);
+    started = true;
   }
-  
+
   delay(1000);
-  
-  if (gprsAccess.attachGPRS(APN, USER, PSW) != GPRS_READY)
-  {
-    printToScreen(errortext);
-  }
-  else {
-    // connection and realize HTTP request
-    printToScreen("Updating server");
-    int res_connect;
 
-    res_connect = client.connect(URL, 80);
-    String temp = readTemp();
-    
-    if (res_connect)
-    { 
-      printToScreen("connected!");
-      client.print("POST ");
-      client.print(PATH);
-      client.println(" HTTP/1.1");
-      client.println("Content-Type: application/json");
-      client.print("Content-Length: ");
-      client.println(temp.length());
-      client.print("Host: ");
-      client.println(URL);
-      client.println();  
-      client.print(temp);
-      client.println();      
-
-      printToScreen(oktext);
+  if (started) {
+    if (!inet.attachGPRS(APN, USER, PSW)) {
+      printToScreen(errortext);
     }
-    else
+
+    // connection and realize HTTP request
+    boolean res_connected = false;
+
+    int n_of_at = 0;
+    while(n_of_at < 3){
+       if(!inet.connectTCP(URL, 80)){
+          n_of_at++;
+        } else {
+          res_connected = true;
+          break;
+      }
+    }
+    char *temp = readTemp();
+    printToScreen("Updating server");
+    if (res_connected)
     {
+      char end_c[2];
+      end_c[0]=0x1a;
+      end_c[1]='\0';
+      printToScreen("connected!");
+      
+      gsm.SimpleWrite("POST ");
+      gsm.SimpleWrite(PATH);
+      gsm.SimpleWrite(" HTTP/1.1\n");
+      gsm.SimpleWrite("Host: ");
+      gsm.SimpleWrite(URL);
+      gsm.SimpleWrite("\n");
+      gsm.SimpleWrite("User-Agent: Arduino\n");
+      gsm.SimpleWrite("Content-Type: application/json\n");
+      gsm.SimpleWrite("Content-Length: ");
+      gsm.SimpleWrite(strlen(temp));
+      gsm.SimpleWrite("\n\n");
+      gsm.SimpleWrite(temp);
+      gsm.SimpleWrite("\n\n");
+      gsm.SimpleWrite(end_c);
+      free(temp);  
+
+      switch (gsm.WaitResp(10000, 10, "SEND OK")) {
+        case RX_TMOUT_ERR:
+          return 0;
+          break;
+        case RX_FINISHED_STR_NOT_RECV:
+          return 0;
+          break;
+      }
+    }
+    else {
       // if you didn't get a connection to the server
       printToScreen(errortext);
     }
+    
+    delay(500);
     printToScreen("disconnecting.");
-    client.stop();
+    
+    inet.disconnectTCP();
+    return 1;
   }
 }
 
 void printToScreen(String str) {
   lcd.home();
+  lcd.clear();
   lcd.print(str);
   printTemp();
 }
@@ -120,10 +145,10 @@ void printTemp() {
   lcd.print(dht.readTemperature());
 }
 
-String readTemp() {
+char* readTemp() {
   float t = dht.readTemperature();
 
-  char output[100];
+  char *output = (char*)malloc(sizeof(char) * 100);
   char tmp[20];
   char *preTmp = "{\"temperature\": {\"temperature\": \"";
   char *postTmp = "\"}}";
