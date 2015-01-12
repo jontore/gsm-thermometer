@@ -1,5 +1,4 @@
 // libraries
-#include "SIM900.h"
 #include <SoftwareSerial.h>
 #include "inetGSM.h"
 #include <DHT.h>
@@ -11,7 +10,7 @@
 
 // GSM settings
 #define PINNUMBER "AT+CPIN=0000"
-#define APN "internet"
+#define APN ""
 #define USER ""
 #define PSW  ""
 
@@ -30,15 +29,7 @@ Sleep sleep;
 LiquidCrystal_I2C lcd(0x3F, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 InetGSM inet;
 
-
-// messages for serial monitor response
-String oktext = "OK";
 String errortext = "ERROR";
-
-char path[] = "/";
-
-// variable for save response obtained
-String response = "";
 
 void setup()
 {
@@ -57,7 +48,7 @@ void loop() {
   delay(300);
 }
 
-
+char msg[50];
 int measureAndPost () {
   boolean started = false;
   printToScreen("Connecting");
@@ -72,62 +63,18 @@ int measureAndPost () {
     if (!inet.attachGPRS(APN, USER, PSW)) {
       printToScreen(errortext);
     }
-
-    // connection and realize HTTP request
-    boolean res_connected = false;
-
-    int n_of_at = 0;
-    while(n_of_at < 3){
-       if(!inet.connectTCP(URL, 80)){
-          n_of_at++;
-        } else {
-          res_connected = true;
-          break;
-      }
-    }
+    
+    delay(1000);
+    
     char *temp = readTemp();
     printToScreen("Updating server");
-    if (res_connected)
-    {
-      char end_c[2];
-      end_c[0]=0x1a;
-      end_c[1]='\0';
-      printToScreen("connected!");
-      
-      gsm.SimpleWrite("POST ");
-      gsm.SimpleWrite(PATH);
-      gsm.SimpleWrite(" HTTP/1.1\n");
-      gsm.SimpleWrite("Host: ");
-      gsm.SimpleWrite(URL);
-      gsm.SimpleWrite("\n");
-      gsm.SimpleWrite("User-Agent: Arduino\n");
-      gsm.SimpleWrite("Content-Type: application/json\n");
-      gsm.SimpleWrite("Content-Length: ");
-      gsm.SimpleWrite(strlen(temp));
-      gsm.SimpleWrite("\n\n");
-      gsm.SimpleWrite(temp);
-      gsm.SimpleWrite("\n\n");
-      gsm.SimpleWrite(end_c);
-      free(temp);  
-
-      switch (gsm.WaitResp(10000, 10, "SEND OK")) {
-        case RX_TMOUT_ERR:
-          return 0;
-          break;
-        case RX_FINISHED_STR_NOT_RECV:
-          return 0;
-          break;
-      }
-    }
-    else {
-      // if you didn't get a connection to the server
-      printToScreen(errortext);
-    }
+    
+    inet.httpPOST("homebrewer.herokuapp.com", 80, "/temperatures", temp, msg, 50);
+    free(temp);
     
     delay(500);
     printToScreen("disconnecting.");
     
-    inet.disconnectTCP();
     return 1;
   }
 }
@@ -145,16 +92,14 @@ void printTemp() {
   lcd.print(dht.readTemperature());
 }
 
+
 char* readTemp() {
   float t = dht.readTemperature();
-
+  char tmp[20];    
   char *output = (char*)malloc(sizeof(char) * 100);
-  char tmp[20];
-  char *preTmp = "{\"temperature\": {\"temperature\": \"";
-  char *postTmp = "\"}}";
+  char *preTmp = "temperature%5Btemperature%5D=";
   dtostrf(t, 4, 3, tmp);
   strcpy(output, preTmp);
   strcat(output, tmp);
-  strcat(output, postTmp);
   return output;
 };
