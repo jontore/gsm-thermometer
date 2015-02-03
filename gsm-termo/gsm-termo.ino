@@ -7,29 +7,26 @@
 #include <LiquidCrystal_I2C.h>
 #include <Sleep_n0m1.h>
 
-
 // GSM settings
 #define PINNUMBER "AT+CPIN=0000"
-#define APN ""
+#define APN "internet"
 #define USER ""
 #define PSW  ""
 
 //POST settings
-#define URL ""
-#define PATH ""
+#define URL "example.com"
+#define PATH "/path"
 
 //DHT settings
 #define DHTPIN 7
 #define DHTTYPE DHT11   // DHT 11 
 
-#define SLEEPTIME 300000
+#define SLEEPTIME 300
 
 DHT dht(DHTPIN, DHTTYPE);
 Sleep sleep;
 LiquidCrystal_I2C lcd(0x3F, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 InetGSM inet;
-
-String errortext = "ERROR";
 
 void setup()
 {
@@ -48,7 +45,7 @@ void loop() {
   delay(300);
 }
 
-char msg[50];
+char msg[1];
 int measureAndPost () {
   boolean started = false;
   printToScreen("Connecting");
@@ -61,19 +58,20 @@ int measureAndPost () {
 
   if (started) {
     if (!inet.attachGPRS(APN, USER, PSW)) {
-      printToScreen(errortext);
+      printToScreen("Error");
     }
     
     delay(1000);
     
-    char *temp = readTemp();
+    char temp[50];
+    readTemp(temp);
     printToScreen("Updating server");
+    delay(2000);
     
-    inet.httpPOST("homebrewer.herokuapp.com", 80, "/temperatures", temp, msg, 50);
-    free(temp);
+    inet.httpPOST(URL, 80, PATH, temp, msg, 1);
     
     delay(500);
-    printToScreen("disconnecting.");
+    printToScreen("disconnecting");
     
     return 1;
   }
@@ -93,13 +91,11 @@ void printTemp() {
 }
 
 
-char* readTemp() {
+void readTemp(char* input) {
   float t = dht.readTemperature();
   char tmp[20];    
-  char *output = (char*)malloc(sizeof(char) * 100);
   char *preTmp = "temperature%5Btemperature%5D=";
   dtostrf(t, 4, 3, tmp);
-  strcpy(output, preTmp);
-  strcat(output, tmp);
-  return output;
+  strcpy(input, preTmp);
+  strcat(input, tmp);
 };
