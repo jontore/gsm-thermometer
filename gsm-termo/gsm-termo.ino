@@ -3,7 +3,6 @@
 #include "inetGSM.h"
 #include <DHT.h>
 #include <Wire.h>
-
 #include <LiquidCrystal_I2C.h>
 #include <Sleep_n0m1.h>
 
@@ -19,17 +18,17 @@
 
 //DHT settings
 #define DHTPIN 7
-#define DHTTYPE DHT11   // DHT 11 
 
 #define SLEEPTIME 300
 
-DHT dht(DHTPIN, DHTTYPE);
+DHT dht;
 Sleep sleep;
 LiquidCrystal_I2C lcd(0x3F, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 InetGSM inet;
 
 void setup()
 {
+  dht.setup(DHTPIN);
   lcd.begin(20, 4);
   lcd.home();
   printToScreen("init");
@@ -87,12 +86,12 @@ void printToScreen(String str) {
 void printTemp() {
   lcd.setCursor(12, 4);
   lcd.print("C:");
-  lcd.print(dht.readTemperature());
+  lcd.print(dht.getTemperature());
 }
 
 
 void readTemp(char* input) {
-  float t = dht.readTemperature();
+  float t = dht.getTemperature();
   char tmp[20];    
   char *preTmp = "temperature%5Btemperature%5D=";
   dtostrf(t, 4, 3, tmp);
