@@ -4,25 +4,26 @@
 #include <DHT.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
-#include <Sleep_n0m1.h>
 
 // GSM settings
 #define PINNUMBER "AT+CPIN=0000"
-#define APN "internet"
+#define APN ""
 #define USER ""
 #define PSW  ""
 
 //POST settings
 #define URL "example.com"
-#define PATH "/path"
+#define PATH "/"
 
 //DHT settings
 #define DHTPIN 7
 
-#define SLEEPTIME 300
+//Air quality
+#define AIRQUALITY_SENSOR A0
+
+#define SLEEP_TIME 3000
 
 DHT dht;
-Sleep sleep;
 LiquidCrystal_I2C lcd(0x3F, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 InetGSM inet;
 
@@ -39,9 +40,7 @@ void loop() {
   measureAndPost();
   lcd.clear();
   lcd.noDisplay();
-  sleep.pwrDownMode();
-  sleep.sleepDelay(SLEEPTIME);
-  delay(300);
+  delay(SLEEP_TIME);
 }
 
 char msg[1];
@@ -58,20 +57,22 @@ int measureAndPost () {
   if (started) {
     if (!inet.attachGPRS(APN, USER, PSW)) {
       printToScreen("Error");
+      delay(2000);
+      return 0;
     }
-    
+
     delay(1000);
-    
+
     char temp[50];
-    readTemp(temp);
+    readSensors(temp);
     printToScreen("Updating server");
     delay(2000);
-    
+
     inet.httpPOST(URL, 80, PATH, temp, msg, 1);
-    
+
     delay(500);
     printToScreen("disconnecting");
-    
+
     return 1;
   }
 }
@@ -84,17 +85,31 @@ void printToScreen(String str) {
 }
 
 void printTemp() {
-  lcd.setCursor(12, 4);
-  lcd.print("C:");
-  lcd.print(dht.getTemperature());
+  lcd.setCursor(0, 4);
+  lcd.print("C: ");
+  lcd.print(int(dht.getTemperature()));
+  lcd.print(" h : ");
+  lcd.print(int(dht.getHumidity()));
+  int airQuality = analogRead(AIRQUALITY_SENSOR);
+  lcd.print(" aq: ");
+  lcd.print(airQuality);
 }
 
+void readSensors(char* input) {
+  float temp = dht.getTemperature();
+  float humidity = dht.getHumidity();
+  int airQuality = analogRead(AIRQUALITY_SENSOR);
 
-void readTemp(char* input) {
-  float t = dht.getTemperature();
-  char tmp[20];    
+  char tmp[20];
   char *preTmp = "temperature%5Btemperature%5D=";
-  dtostrf(t, 4, 3, tmp);
+  char *preHum = "temperature%5Bhumidity%5D=";
+  char *preAirQuality = "temperature%5Bair_quality%5D=";
+  dtostrf(temp, 4, 3, tmp);
   strcpy(input, preTmp);
+  dtostrf(humidity, 4, 3, tmp);
+  strcpy(input, preHum);
+  dtostrf(airQuality, 4, 3, tmp);
+  strcpy(input, preAirQuality);
   strcat(input, tmp);
+  lcd.print(input);
 };
