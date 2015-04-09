@@ -88,7 +88,7 @@ void printTemp() {
   lcd.setCursor(0, 4);
   lcd.print("C: ");
   lcd.print(int(dht.getTemperature()));
-  lcd.print(" h : ");
+  lcd.print(" h: ");
   lcd.print(int(dht.getHumidity()));
   int airQuality = analogRead(AIRQUALITY_SENSOR);
   lcd.print(" aq: ");
@@ -102,14 +102,15 @@ void readSensors(char* input) {
 
   char tmp[20];
   char *preTmp = "temperature%5Btemperature%5D=";
-  char *preHum = "temperature%5Bhumidity%5D=";
-  char *preAirQuality = "temperature%5Bair_quality%5D=";
+  char *preHum = "&temperature%5Bhumidity%5D=";
+  char *preAirQuality = "&temperature%5Bair_quality%5D=";
   dtostrf(temp, 4, 3, tmp);
   strcpy(input, preTmp);
-  dtostrf(humidity, 4, 3, tmp);
-  strcpy(input, preHum);
-  dtostrf(airQuality, 4, 3, tmp);
-  strcpy(input, preAirQuality);
   strcat(input, tmp);
-  lcd.print(input);
+  dtostrf(humidity, 4, 3, tmp);
+  strcat(input, preHum);
+  strcat(input, tmp);
+  dtostrf(airQuality, 4, 3, tmp);
+  strcat(input, preAirQuality);
+  strcat(input, tmp);
 };
