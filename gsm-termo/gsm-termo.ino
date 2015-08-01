@@ -21,6 +21,7 @@
 
 //Air quality
 #define AIRQUALITY_SENSOR A0
+#define ETHANOL_SENSOR A1
 
 #define SLEEP_TIME 300000
 
@@ -34,8 +35,9 @@ const char waitingMsg[] PROGMEM = "Waiting";
 const char preTmp[] PROGMEM = "d%5Btemperature%5D=";
 const char preHum[] PROGMEM = "\&d%5Bhumidity%5D=";
 const char preAirQuality[] PROGMEM = "\&d%5Bair_quality%5D=";
+const char preEthanol[] PROGMEM = "\&d%5Bethanol%5D=";
 
-const char* const string_table[] PROGMEM = {connectMsg, errorMsg, readingMsg, updatingMsg, disconnetingMsg, waitingMsg, preTmp, preHum, preAirQuality};
+const char* const string_table[] PROGMEM = {connectMsg, errorMsg, readingMsg, updatingMsg, disconnetingMsg, waitingMsg, preTmp, preHum, preAirQuality, preEthanol};
 
 #define CONNECTING_STR 0
 #define ERROR_STR 1
@@ -44,9 +46,10 @@ const char* const string_table[] PROGMEM = {connectMsg, errorMsg, readingMsg, up
 #define DISCONNECTING_STR 4
 #define WAITING_STR 5
 
-#define AIRQUALITY_STR 8
 #define TEMPERATURE_STR 6
 #define HUMIDITY_STR 7
+#define AIRQUALITY_STR 8
+#define ETHANOL_STR 9
 
 DHT dht;
 LiquidCrystal_I2C lcd(0x3F, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
@@ -54,7 +57,7 @@ InetGSM inet;
 
 void setup()
 {
-  dht.setup(DHTPIN);
+  dht.setup(DHTPIN, DHT::DHT22);
   lcd.begin(20, 4);
   lcd.home();
   delay(2000);
@@ -120,12 +123,14 @@ void printToScreen(String str) {
 
 void printTemp() {
   lcd.setCursor(0, 4);
-  lcd.print("C: ");
+  lcd.print("C:");
   lcd.print(int(dht.getTemperature()));
-  lcd.print(" h: ");
+  lcd.print("h:");
   lcd.print(int(dht.getHumidity()));
-  lcd.print("aq: ");
+  lcd.print("aq:");
   lcd.print(analogRead(AIRQUALITY_SENSOR));
+  lcd.print("e:");
+  lcd.print(analogRead(ETHANOL_SENSOR ));
 }
 
 
@@ -133,11 +138,13 @@ void readSensors(char* input) {
   float temp = dht.getTemperature();
   float hum = dht.getHumidity();
   float aq = (float)analogRead(AIRQUALITY_SENSOR);
+  float et = (float)analogRead(ETHANOL_SENSOR);
 
   strcpy(input, "");
   copyAndCat(input, TEMPERATURE_STR, temp);
   copyAndCat(input, HUMIDITY_STR, hum);
   copyAndCat(input, AIRQUALITY_STR, aq);
+  copyAndCat(input, ETHANOL_STR, et);
 };
 
 void copyAndCat(char* input, int str_position, float measurement) {
